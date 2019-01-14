@@ -96,8 +96,9 @@
 
 
 static U32  index, spk_index;
-static U8 audio_buffer_out, spk_buffer_in;	// the ID number of the buffer used for sending out
+static U8 /*audio_buffer_out,*/ spk_buffer_in;	// the ID number of the buffer used for sending out
 											// to the USB and reading from USB
+static U8 rxbuff_out;
 
 U8 command [4][5];
 U8 command_out [8];
@@ -111,7 +112,8 @@ static U8 ep_audio_in, ep_audio_out, ep_audio_out_fb;
 void hpsdr_device_audio_task_init(U8 ep_in, U8 ep_out, U8 ep_out_fb)
 {
 	index     =0;
-	audio_buffer_out = 0;
+	//audio_buffer_out = 0;
+	rxbuff_out = 0;
 	spk_index = 0;
 	spk_buffer_in = 0;
 	mute = FALSE;
@@ -169,6 +171,8 @@ void hpsdr_device_audio_task(void *pvParameters)
 	while (TRUE) {
 		vTaskDelayUntil(&xLastWakeTime, HPSDR_configTSK_USB_DAUDIO_PERIOD);
 
+		int rxbuff_in = (rxbuff_next-1+RXBUFF_NO_OF_CHUNKS) % RXBUFF_NO_OF_CHUNKS;
+
 		// First, check the device enumeration state
 		if (!Is_device_enumerated()) { time=0; startup=TRUE; continue; };
 
@@ -191,8 +195,9 @@ void hpsdr_device_audio_task(void *pvParameters)
 			else if( time >= 9*STARTUP_LED_DELAY ) {
 				startup=FALSE;
 
-				audio_buffer_in = 0;
-				audio_buffer_out = 0;
+				//audio_buffer_in = 0;
+				//audio_buffer_out = 0;
+				rxbuff_out = rxbuff_in;
 				spk_buffer_in = 0;
 				spk_buffer_out = 0;
 				index = 0;
@@ -226,6 +231,7 @@ void hpsdr_device_audio_task(void *pvParameters)
 
 		// find out the current status of PDCA transfer
 		// gap is how far the audio_buffer_out is from overlapping audio_buffer_in
+		/*
 		num_remaining = pdca_channel->tcr;
 		if (audio_buffer_in != audio_buffer_out) {
 			// AK and USB using same buffer
@@ -235,8 +241,12 @@ void hpsdr_device_audio_task(void *pvParameters)
 			// usb and pdca working on different buffers
 			gap = (AUDIO_BUFFER_SIZE - index) + (AUDIO_BUFFER_SIZE - num_remaining);
 		}
+		*/
 
-		if ((Is_usb_in_ready(EP_IQ_IN)) && (gap > (num_samples * 2))) {
+		int chunksgap = (rxbuff_in-rxbuff_out+RXBUFF_NO_OF_CHUNKS) % RXBUFF_NO_OF_CHUNKS;
+		gap = chunksgap*RXBUFF_CHUNK_SIZE - index;
+
+		if (!startup && (Is_usb_in_ready(EP_IQ_IN)) && (gap > (num_samples * 2))) {
 			Usb_reset_endpoint_fifo_access(EP_IQ_IN);
 
 			// fill the 1st 8 bytes with SYNC and CONTROL as in HPSDR protocol
@@ -249,39 +259,29 @@ void hpsdr_device_audio_task(void *pvParameters)
 			for( i=0 ; i < num_samples ; i++ ) {
 				// Fill endpoint with samples
 				if(!mute) {
-					if (audio_buffer_out == 0) {
-						sample_LSB = audio_buffer_0[index+IN_LEFT];
-						sample_SB = audio_buffer_0[index+IN_LEFT] >> 8;
-						sample_MSB = audio_buffer_0[index+IN_LEFT] >> 16;
-					} else {
-						sample_LSB = audio_buffer_1[index+IN_LEFT];
-						sample_SB = audio_buffer_1[index+IN_LEFT] >> 8;
-						sample_MSB = audio_buffer_1[index+IN_LEFT] >> 16;
-					}
+					U32 *buff = rx_buffers[rxbuff_out];
+
+					sample_LSB = buff[index+IN_LEFT];
+					sample_SB = buff[index+IN_LEFT] >> 8;
+					sample_MSB = buff[index+IN_LEFT] >> 16;
 
 					Usb_write_endpoint_data(EP_IQ_IN, 8, sample_MSB);
 					Usb_write_endpoint_data(EP_IQ_IN, 8, sample_SB);
 					Usb_write_endpoint_data(EP_IQ_IN, 8, sample_LSB);
 
-
-					if (audio_buffer_out == 0) {
-						sample_LSB = audio_buffer_0[index+IN_RIGHT];
-						sample_SB = audio_buffer_0[index+IN_RIGHT] >> 8;
-						sample_MSB = audio_buffer_0[index+IN_RIGHT] >> 16;
-					} else {
-						sample_LSB = audio_buffer_1[index+IN_RIGHT];
-						sample_SB = audio_buffer_1[index+IN_RIGHT] >> 8;
-						sample_MSB = audio_buffer_1[index+IN_RIGHT] >> 16;
-					};
+					sample_LSB = buff[index+IN_RIGHT];
+					sample_SB = buff[index+IN_RIGHT] >> 8;
+					sample_MSB = buff[index+IN_RIGHT] >> 16;
 
 					Usb_write_endpoint_data(EP_IQ_IN, 8, sample_MSB);
 					Usb_write_endpoint_data(EP_IQ_IN, 8, sample_SB);
 					Usb_write_endpoint_data(EP_IQ_IN, 8, sample_LSB);
 
 					index += 2;
-					if (index >= AUDIO_BUFFER_SIZE) {
+					if (index >= RXBUFF_CHUNK_SIZE) {
 						index=0;
-						audio_buffer_out = 1 - audio_buffer_out;
+						rxbuff_out++;
+						if (rxbuff_out >= RXBUFF_NO_OF_CHUNKS) rxbuff_out = 0;
 					}
 				} else {
 					Usb_write_endpoint_data(EP_IQ_IN, 8, 0x00);

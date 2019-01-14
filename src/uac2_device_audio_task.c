@@ -50,7 +50,7 @@
  * See http://code.google.com/p/sdr-widget/
  * Copyright under GNU General Public License v2
  */
-
+#if 0
 //_____  I N C L U D E S ___________________________________________________
 
 #include <stdio.h>
@@ -463,3 +463,4 @@ void uac2_device_audio_task(void *pvParameters)
 }
 
 #endif  // USB_DEVICE_FEATURE == ENABLED
+#endif // #if 0

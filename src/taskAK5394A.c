@@ -66,11 +66,11 @@ static const gpio_map_t SSC_GPIO_MAP = {
 };
 
 static const pdca_channel_options_t PDCA_OPTIONS = {
-	.addr = (void *)audio_buffer_0,         // memory address
+	.addr = (void *) rx_buffers[0],         // memory address
 	.pid = AVR32_PDCA_PID_SSC_RX,           // select peripheral
-	.size = AUDIO_BUFFER_SIZE,              // transfer counter
-	.r_addr = NULL,                         // next memory address
-	.r_size = 0,                            // next transfer counter
+	.size = RXBUFF_CHUNK_SIZE,              // transfer counter
+	.r_addr = (void *) rx_buffers[1],       // next memory address
+	.r_size = RXBUFF_CHUNK_SIZE,            // next transfer counter
 	.transfer_size = PDCA_TRANSFER_SIZE_WORD  // select size of the transfer - 32 bits
 };
 
@@ -83,14 +83,16 @@ static const pdca_channel_options_t SPK_PDCA_OPTIONS = {
 	.transfer_size = PDCA_TRANSFER_SIZE_WORD  // select size of the transfer - 32 bits
 };
 
-volatile U32 audio_buffer_0[AUDIO_BUFFER_SIZE];
-volatile U32 audio_buffer_1[AUDIO_BUFFER_SIZE];
+//volatile U32 audio_buffer_0[AUDIO_BUFFER_SIZE];
+//volatile U32 audio_buffer_1[AUDIO_BUFFER_SIZE];
+volatile U32 rx_buffers[RXBUFF_CHUNK_SIZE][RXBUFF_NO_OF_CHUNKS];
 volatile U32 spk_buffer_0[SPK_BUFFER_SIZE];
 volatile U32 spk_buffer_1[SPK_BUFFER_SIZE];
 
 volatile avr32_ssc_t *ssc = &AVR32_SSC;
 
-volatile int audio_buffer_in, spk_buffer_out;
+volatile int /* audio_buffer_next, */ spk_buffer_out;
+volatile int rxbuff_next;
 
 /*! \brief The PDCA interrupt handler.
  *
@@ -98,15 +100,11 @@ volatile int audio_buffer_in, spk_buffer_out;
  * The interrupt will happen when the reload counter reaches 0
  */
 __attribute__((__interrupt__)) static void pdca_int_handler(void) {
-	if (audio_buffer_in == 0) {
-		// Set PDCA channel reload values with address where data to load are stored, and size of the data block to load.
-		pdca_reload_channel(PDCA_CHANNEL_SSC_RX, (void *)audio_buffer_1, AUDIO_BUFFER_SIZE);
-		audio_buffer_in = 1;
-	} else {
-		pdca_reload_channel(PDCA_CHANNEL_SSC_RX, (void *)audio_buffer_0, AUDIO_BUFFER_SIZE);
-		audio_buffer_in = 0;
-	}
+	rxbuff_next += 1;
+	if (rxbuff_next >= RXBUFF_NO_OF_CHUNKS)
+		rxbuff_next = 0;
 
+	pdca_reload_channel(PDCA_CHANNEL_SSC_RX, (void *) rx_buffers[rxbuff_next], RXBUFF_CHUNK_SIZE);
 }
 
 /*! \brief The PDCA interrupt handler.
@@ -206,8 +204,11 @@ void AK5394A_task_init(const Bool uac1) {
 	// HSB Bus matrix register MCFG1 is associated with the CPU instruction master interface.
 	AVR32_HMATRIX.mcfg[AVR32_HMATRIX_MASTER_CPU_INSN] = 0x1;
 
-	audio_buffer_in = 0;
+	//audio_buffer_next = 1;
 	spk_buffer_out = 0;
+
+	rxbuff_next = 1;
+
 	// Register PDCA IRQ interrupt.
 	pdca_set_irq();
 

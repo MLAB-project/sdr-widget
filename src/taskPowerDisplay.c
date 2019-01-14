@@ -318,8 +318,8 @@ static void vtaskPowerDisplay( void * pcParameters )
 				//---------------------------------------
 				// Normalize and store samples in a Ring Buffer once every 5ms
 				//---------------------------------------
-				audio_sample_buffer[0][audio_sample_buffer_index] = normalize_sample(audio_buffer_0[0]);
-				audio_sample_buffer[1][audio_sample_buffer_index] = normalize_sample(audio_buffer_0[1]);
+				audio_sample_buffer[0][audio_sample_buffer_index] = 0; //normalize_sample(audio_buffer_0[0]);
+				audio_sample_buffer[1][audio_sample_buffer_index] = 0; //normalize_sample(audio_buffer_0[1]);
 				audio_sample_buffer_index++;
 				if (audio_sample_buffer_index >= bufsize) audio_sample_buffer_index = 0;
 
@@ -415,8 +415,8 @@ static void vtaskPowerDisplay( void * pcParameters )
     		else
 	    	{
 				// Normalize and store samples in a Ring Buffer once every 5ms
-				audio_sample_buffer[0][audio_sample_buffer_index] = normalize_sample(audio_buffer_0[0]);
-				audio_sample_buffer[1][audio_sample_buffer_index] = normalize_sample(audio_buffer_0[1]);
+				audio_sample_buffer[0][audio_sample_buffer_index] = 0; //normalize_sample(audio_buffer_0[0]);
+				audio_sample_buffer[1][audio_sample_buffer_index] = 0; //normalize_sample(audio_buffer_0[1]);
 				audio_sample_buffer_index++;
 				if (audio_sample_buffer_index >= bufsize) audio_sample_buffer_index = 0;
 
@@ -476,16 +476,16 @@ static void vtaskPowerDisplay( void * pcParameters )
 
    			// Get first batch of samples
     		// Sample values
-    		first_sample0 = audio_buffer_0[0];
-    		first_sample1 = audio_buffer_0[1];
+    		first_sample0 = 0; //audio_buffer_0[0];
+    		first_sample1 = 0; //audio_buffer_0[1];
 
     	    // Pause for 200us
     		vTaskDelay( 2 );
 
    			// Get second batch of samples
        		// Sample values
-       		second_sample0 = audio_buffer_0[0];
-       		second_sample1 = audio_buffer_0[1];
+       		second_sample0 = 0; //audio_buffer_0[0];
+       		second_sample1 = 0; //audio_buffer_0[1];
 
       		// Normalize values
        		if(first_sample0>0x7FFFFF)
