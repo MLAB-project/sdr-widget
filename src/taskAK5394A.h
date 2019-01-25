@@ -49,8 +49,8 @@ void AK5394A_pdca_enable(void);
 void AK5394A_task_init(Bool uac2);
 
 extern volatile int rxbuff_next;
-#define RXBUFF_CHUNK_SIZE	63 * 8
-#define RXBUFF_NO_OF_CHUNKS 20
+#define RXBUFF_CHUNK_SIZE	63 * 4
+#define RXBUFF_NO_OF_CHUNKS 8
 extern volatile U32 rx_buffers[RXBUFF_NO_OF_CHUNKS][RXBUFF_CHUNK_SIZE];
 
 #endif /* TASKAK5394A_H_ */
