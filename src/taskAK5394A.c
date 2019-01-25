@@ -85,7 +85,8 @@ static const pdca_channel_options_t SPK_PDCA_OPTIONS = {
 
 //volatile U32 audio_buffer_0[AUDIO_BUFFER_SIZE];
 //volatile U32 audio_buffer_1[AUDIO_BUFFER_SIZE];
-volatile U32 rx_buffers[RXBUFF_CHUNK_SIZE][RXBUFF_NO_OF_CHUNKS];
+//volatile U32 rx_buffers[RXBUFF_CHUNK_SIZE][RXBUFF_NO_OF_CHUNKS];
+volatile U32 rx_buffers[RXBUFF_NO_OF_CHUNKS][RXBUFF_CHUNK_SIZE];
 volatile U32 spk_buffer_0[SPK_BUFFER_SIZE];
 volatile U32 spk_buffer_1[SPK_BUFFER_SIZE];
 
