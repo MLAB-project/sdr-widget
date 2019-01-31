@@ -142,7 +142,9 @@ void hpsdr_device_audio_task(void *pvParameters)
 	static U32  time=0;
 	static Bool startup=TRUE;
 	int i, j = 0;
-	U16 num_samples, num_remaining, gap;
+	int overflow_flag = 0;
+	U16 num_samples, gap = 0;
+	U16 prevgap = 0;
 
 	U8 sample_MSB;
 	U8 sample_SB;
@@ -150,15 +152,8 @@ void hpsdr_device_audio_task(void *pvParameters)
 
 	const U8 EP_IQ_IN = ep_audio_in;
 	const U8 EP_IQ_OUT = ep_audio_out;
-	// const U8 EP_IQ_OUT_FB = ep_audio_out_fb;
 	const U8 IN_LEFT = FEATURE_IN_NORMAL ? 0 : 1;
 	const U8 IN_RIGHT = FEATURE_IN_NORMAL ? 1 : 0;
-	// const U8 OUT_LEFT = FEATURE_OUT_NORMAL ? 0 : 1;
-	// const U8 OUT_RIGHT = FEATURE_OUT_NORMAL ? 1 : 0;
-	//  U32 sample;
-
-	volatile avr32_pdca_channel_t *pdca_channel = pdca_get_handler(PDCA_CHANNEL_SSC_RX);
-	volatile avr32_pdca_channel_t *spk_pdca_channel = pdca_get_handler(PDCA_CHANNEL_SSC_TX);
 
 	for (i=0; i < 5; i++){
 		for (j=0; j < 4; j++) command[j][i] = 0;
@@ -194,14 +189,10 @@ void hpsdr_device_audio_task(void *pvParameters)
 			else if( time== 8*STARTUP_LED_DELAY ) LED_Off( LED3 );
 			else if( time >= 9*STARTUP_LED_DELAY ) {
 				startup=FALSE;
-
-				//audio_buffer_in = 0;
-				//audio_buffer_out = 0;
 				rxbuff_out = rxbuff_in;
-				spk_buffer_in = 0;
-				spk_buffer_out = 0;
 				index = 0;
-
+				gap = 0;
+				overflow_flag = 0;
 				freq_changed = 1;						// force a freq change reset
 			}
 		}
@@ -231,27 +222,31 @@ void hpsdr_device_audio_task(void *pvParameters)
 
 		// find out the current status of PDCA transfer
 		// gap is how far the audio_buffer_out is from overlapping audio_buffer_in
-		/*
-		num_remaining = pdca_channel->tcr;
-		if (audio_buffer_in != audio_buffer_out) {
-			// AK and USB using same buffer
-			if ( index < (AUDIO_BUFFER_SIZE - num_remaining)) gap = AUDIO_BUFFER_SIZE - num_remaining - index;
-			else gap = AUDIO_BUFFER_SIZE - index + AUDIO_BUFFER_SIZE - num_remaining + AUDIO_BUFFER_SIZE;
-		} else {
-			// usb and pdca working on different buffers
-			gap = (AUDIO_BUFFER_SIZE - index) + (AUDIO_BUFFER_SIZE - num_remaining);
-		}
-		*/
 
 		int chunksgap = (rxbuff_in-rxbuff_out+RXBUFF_NO_OF_CHUNKS) % RXBUFF_NO_OF_CHUNKS;
+
+		/* prevgap will be the last cycle's gap. if samples were transferred last cycle,
+		   the gap was subtracted */
+		prevgap = gap;
+
+		/* calculate gap with new info on DMA position */
 		gap = chunksgap*RXBUFF_CHUNK_SIZE - index;
 
+		/* did gap suddenly decrease? must be an overflow */
+		if (prevgap < gap)
+			overflow_flag = 1;
+
 		if (!startup && (Is_usb_in_ready(EP_IQ_IN)) && (gap > (num_samples * 2))) {
+			gap -= num_samples * 2;
+
 			Usb_reset_endpoint_fifo_access(EP_IQ_IN);
 
 			// fill the 1st 8 bytes with SYNC and CONTROL as in HPSDR protocol
 			for (i=0; i < 3; i++) Usb_write_endpoint_data(EP_IQ_IN, 8, 0x7f);
-			for (i=0; i < 5; i++) Usb_write_endpoint_data(EP_IQ_IN, 8, command[j][i]);
+			//for (i=0; i < 5; i++) Usb_write_endpoint_data(EP_IQ_IN, 8, command[j][i]);
+			Usb_write_endpoint_data(EP_IQ_IN, 8, overflow_flag << 7);
+			for (i=0; i<4; i++)
+				Usb_write_endpoint_data(EP_IQ_IN, 8, 0);
 
 			j++;
 			if (j > 3) j = 0;
@@ -259,7 +254,7 @@ void hpsdr_device_audio_task(void *pvParameters)
 			for( i=0 ; i < num_samples ; i++ ) {
 				// Fill endpoint with samples
 				if(!mute) {
-					U32 *buff = rx_buffers[rxbuff_out];
+					U32 *buff = (U32 *) rx_buffers[rxbuff_out];
 
 					sample_LSB = buff[index+IN_LEFT];
 					sample_SB = buff[index+IN_LEFT] >> 8;
@@ -300,25 +295,7 @@ void hpsdr_device_audio_task(void *pvParameters)
 			Usb_ack_in_ready_send(EP_IQ_IN);		// send the current bank
 		}	// end if in ready
 
-
-			// Playback
-
-			// Sync CS4344 spk data stream by calculating gap and provide feedback
-		num_remaining = spk_pdca_channel->tcr;
-		if (spk_buffer_in != spk_buffer_out) {
-			// CS4344 and USB using same buffer
-			if ( spk_index < (SPK_BUFFER_SIZE - num_remaining)) gap = SPK_BUFFER_SIZE - num_remaining - spk_index;
-			else gap = SPK_BUFFER_SIZE - spk_index + SPK_BUFFER_SIZE - num_remaining + SPK_BUFFER_SIZE;
-		} else {
-			// usb and pdca working on different buffers
-			gap = (SPK_BUFFER_SIZE - spk_index) + (SPK_BUFFER_SIZE - num_remaining);
-		}
-
-
-		num_samples = 63;
-
 		if (Is_usb_out_received(EP_IQ_OUT) && (Usb_byte_count(EP_IQ_OUT) >= 8)) {
-
 			Usb_reset_endpoint_fifo_access(EP_IQ_OUT);
 
 			// read the first 8 bytes of command for now
@@ -348,58 +325,6 @@ void hpsdr_device_audio_task(void *pvParameters)
 					break;
 				}
 			}
-
-			/*
-			  for (i = 0; i < num_samples; i++){
-
-			  // skip audio left and right samples
-			  Usb_read_endpoint_data(EP_IQ_OUT, 8);
-			  Usb_read_endpoint_data(EP_IQ_OUT, 8);
-			  Usb_read_endpoint_data(EP_IQ_OUT, 8);
-			  Usb_read_endpoint_data(EP_IQ_OUT, 8);
-
-			  if (spk_mute) {
-			  Usb_read_endpoint_data(EP_IQ_OUT, 8);
-			  Usb_read_endpoint_data(EP_IQ_OUT, 8);
-			  sample_LSB = 0;
-			  sample_SB = 0;
-			  sample_MSB = 0;
-			  } else {
-			  // read left IQ out 16 bits
-			  sample_MSB = Usb_read_endpoint_data(EP_IQ_OUT, 8);
-			  sample_SB = Usb_read_endpoint_data(EP_IQ_OUT, 8);
-			  sample_LSB = 0;
-			  };
-
-			  sample = (((U32) sample_MSB) << 16) + (((U32)sample_SB) << 8) + sample_LSB;
-			  if (spk_buffer_in == 0) spk_buffer_0[spk_index+OUT_LEFT] = sample;
-			  else spk_buffer_1[spk_index+OUT_LEFT] = sample;
-
-			  if (spk_mute) {
-			  Usb_read_endpoint_data(EP_IQ_OUT, 8);
-			  Usb_read_endpoint_data(EP_IQ_OUT, 8);
-			  sample_LSB = 0;
-			  sample_SB = 0;
-			  sample_MSB = 0;
-			  } else {
-			  // read right IQ out 16 bits
-			  sample_MSB = Usb_read_endpoint_data(EP_IQ_OUT, 8);
-			  sample_SB = Usb_read_endpoint_data(EP_IQ_OUT, 8);
-			  sample_LSB = 0;
-			  };
-
-			  sample = (((U32) sample_MSB) << 16) + (((U32)sample_SB) << 8) + sample_LSB;
-			  if (spk_buffer_in == 0) spk_buffer_0[spk_index+OUT_RIGHT] = sample;
-			  else spk_buffer_1[spk_index+OUT_RIGHT] = sample;
-
-			  spk_index += 2;
-			  if (spk_index >= SPK_BUFFER_SIZE){
-			  spk_index = 0;
-			  spk_buffer_in = 1 - spk_buffer_in;
-			  }
-			  }
-
-			*/
 
 			Usb_ack_out_received_free(EP_IQ_OUT);
 		}	// end if out received
