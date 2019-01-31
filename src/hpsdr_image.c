@@ -80,6 +80,9 @@ static void x_image_task_init(void) {
   vStartTaskPowerDisplay();
   vStartTaskPushButtonMenu();
   #endif
+  // this mutex would have been created in vStartTaskLCD
+  mutexQueLCD = xSemaphoreCreateMutex();
+
   vStartTaskMoboCtrl();
   // vStartTaskEXERCISE( tskIDLE_PRIORITY );
   hpsdr_AK5394A_task_init();

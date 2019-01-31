@@ -233,7 +233,7 @@ void hpsdr_device_audio_task(void *pvParameters)
 		gap = chunksgap*RXBUFF_CHUNK_SIZE - index;
 
 		/* did gap suddenly decrease? must be an overflow */
-		if (prevgap < gap)
+		if (gap < prevgap)
 			overflow_flag = 1;
 
 		if (!startup && (Is_usb_in_ready(EP_IQ_IN)) && (gap > (num_samples * 2))) {
@@ -245,6 +245,7 @@ void hpsdr_device_audio_task(void *pvParameters)
 			for (i=0; i < 3; i++) Usb_write_endpoint_data(EP_IQ_IN, 8, 0x7f);
 			//for (i=0; i < 5; i++) Usb_write_endpoint_data(EP_IQ_IN, 8, command[j][i]);
 			Usb_write_endpoint_data(EP_IQ_IN, 8, overflow_flag << 7);
+			overflow_flag = 0;
 			for (i=0; i<4; i++)
 				Usb_write_endpoint_data(EP_IQ_IN, 8, 0);
 

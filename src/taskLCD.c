@@ -342,6 +342,7 @@ void vStartTaskLCD( void )
 
 void lcd_q_init(void)
 {
+	return;
 	//xSemaphoreTake( mutexLCD, portMAX_DELAY );
 	lcdQUEDATA.CMD=lcdINIT;
 	xStatus = xQueueSendToBack( lcdCMDQUE, &lcdQUEDATA, portMAX_DELAY );
@@ -350,6 +351,7 @@ void lcd_q_init(void)
 
 void lcd_q_clear(void)
 {
+	return;
 	//xSemaphoreTake( mutexLCD, portMAX_DELAY );
 	lcdQUEDATA.CMD=lcdCLEAR;
 	xStatus = xQueueSendToBack( lcdCMDQUE, &lcdQUEDATA, portMAX_DELAY );
@@ -358,6 +360,7 @@ void lcd_q_clear(void)
 
 void lcd_q_crlf(void)
 {
+	return;
 	//xSemaphoreTake( mutexLCD, portMAX_DELAY );
 	lcdQUEDATA.CMD=lcdCRLF;
 	xStatus = xQueueSendToBack( lcdCMDQUE, &lcdQUEDATA, portMAX_DELAY );
@@ -366,6 +369,7 @@ void lcd_q_crlf(void)
 
 void lcd_q_goto(uint8_t row, uint8_t col)
 {
+	return;
 	//xSemaphoreTake( mutexLCD, portMAX_DELAY );
 	lcdQUEDATA.CMD=lcdGOTO;
 	lcdQUEDATA.data.scrnPOS.row = row;
@@ -376,6 +380,7 @@ void lcd_q_goto(uint8_t row, uint8_t col)
 
 void lcd_q_write(char ch)
 {
+	return;
 	//xSemaphoreTake( mutexLCD, portMAX_DELAY );
     lcdQUEDATA.CMD=lcdWRITE;
     lcdQUEDATA.data.aChar=ch;
@@ -385,6 +390,7 @@ void lcd_q_write(char ch)
 
 void lcd_q_putc(char ch)
 {
+	return;
 	//xSemaphoreTake( mutexLCD, portMAX_DELAY );
     lcdQUEDATA.CMD=lcdPUTC;
     lcdQUEDATA.data.aChar=ch;
@@ -394,6 +400,7 @@ void lcd_q_putc(char ch)
 
 void lcd_q_puth(uint8_t hex)
 {
+	return;
 	//xSemaphoreTake( mutexLCD, portMAX_DELAY );
     lcdQUEDATA.CMD=lcdPUTH;
     lcdQUEDATA.data.aChar=hex;
@@ -403,6 +410,7 @@ void lcd_q_puth(uint8_t hex)
 
 void lcd_q_print(char *string)
 {
+	return;
 	//xSemaphoreTake( mutexLCD, portMAX_DELAY );
     lcdQUEDATA.CMD=lcdPUTS;
     lcdQUEDATA.data.aString = (uint8_t*) string;
@@ -412,6 +420,7 @@ void lcd_q_print(char *string)
 
 void lcd_q_set(uint8_t cmd)
 {
+	return;
 	//xSemaphoreTake( mutexLCD, portMAX_DELAY );
     lcdQUEDATA.CMD=lcdSET;
     lcdQUEDATA.data.rawBYTE = cmd;
