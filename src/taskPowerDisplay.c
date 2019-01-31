@@ -13,6 +13,8 @@
  *      Author: Loftur Jonasson, TF3LJ
  */
 
+#if 0 // by povik for Bolidozor
+
 #include "board.h"
 
 #if LCD_DISPLAY			// Multi-line LCD display
@@ -628,3 +630,4 @@ void vStartTaskPowerDisplay(void)
 
 #endif
 
+#endif // #if 0

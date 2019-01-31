@@ -24,6 +24,8 @@
  *
  */
 
+#if 0 // by povik for Bolidozor
+
 //_____  I N C L U D E S ___________________________________________________
 
 //#include <stdio.h>
@@ -151,3 +153,4 @@ void uac1_AK5394A_task(void *pvParameters) {
 }
 
 
+#endif // #if 0

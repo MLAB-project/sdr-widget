@@ -38,8 +38,6 @@
 
 //extern volatile U32 audio_buffer_0[AUDIO_BUFFER_SIZE];
 //extern volatile U32 audio_buffer_1[AUDIO_BUFFER_SIZE];
-extern volatile U32 spk_buffer_0[SPK_BUFFER_SIZE];
-extern volatile U32 spk_buffer_1[SPK_BUFFER_SIZE];
 extern volatile avr32_ssc_t *ssc;
 //extern volatile int audio_buffer_in;
 extern volatile int spk_buffer_out;

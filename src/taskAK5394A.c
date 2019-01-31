@@ -74,21 +74,10 @@ static const pdca_channel_options_t PDCA_OPTIONS = {
 	.transfer_size = PDCA_TRANSFER_SIZE_WORD  // select size of the transfer - 32 bits
 };
 
-static const pdca_channel_options_t SPK_PDCA_OPTIONS = {
-	.addr = (void *)spk_buffer_0,         // memory address
-	.pid = AVR32_PDCA_PID_SSC_TX,           // select peripheral
-	.size = SPK_BUFFER_SIZE,              // transfer counter
-	.r_addr = NULL,                         // next memory address
-	.r_size = 0,                            // next transfer counter
-	.transfer_size = PDCA_TRANSFER_SIZE_WORD  // select size of the transfer - 32 bits
-};
-
 //volatile U32 audio_buffer_0[AUDIO_BUFFER_SIZE];
 //volatile U32 audio_buffer_1[AUDIO_BUFFER_SIZE];
 //volatile U32 rx_buffers[RXBUFF_CHUNK_SIZE][RXBUFF_NO_OF_CHUNKS];
 volatile U32 rx_buffers[RXBUFF_NO_OF_CHUNKS][RXBUFF_CHUNK_SIZE];
-volatile U32 spk_buffer_0[SPK_BUFFER_SIZE];
-volatile U32 spk_buffer_1[SPK_BUFFER_SIZE];
 
 volatile avr32_ssc_t *ssc = &AVR32_SSC;
 
@@ -108,21 +97,6 @@ __attribute__((__interrupt__)) static void pdca_int_handler(void) {
 	pdca_reload_channel(PDCA_CHANNEL_SSC_RX, (void *) rx_buffers[rxbuff_next], RXBUFF_CHUNK_SIZE);
 }
 
-/*! \brief The PDCA interrupt handler.
- *
- * The handler reload the PDCA settings with the correct address and size using the reload register.
- * The interrupt will happen when the reload counter reaches 0
- */
-__attribute__((__interrupt__)) static void spk_pdca_int_handler(void) {
-	if (spk_buffer_out == 0) {
-		// Set PDCA channel reload values with address where data to load are stored, and size of the data block to load.
-		pdca_reload_channel(PDCA_CHANNEL_SSC_TX, (void *)spk_buffer_1, SPK_BUFFER_SIZE);
-		spk_buffer_out = 1;
-	} else {
-		pdca_reload_channel(PDCA_CHANNEL_SSC_TX, (void *)spk_buffer_0, SPK_BUFFER_SIZE);
-		spk_buffer_out = 0;
-	}
-}
 
 /*! \brief Init interrupt controller and register pdca_int_handler interrupt.
  */
@@ -137,7 +111,6 @@ static void pdca_set_irq(void) {
 	// AVR32_INTC_INT2  The priority level to set for this interrupt line.  INT0 is lowest.
 	// INTC_register_interrupt(__int_handler handler, int line, int priority);
 	INTC_register_interrupt( (__int_handler) &pdca_int_handler, AVR32_PDCA_IRQ_0, AVR32_INTC_INT2);
-	INTC_register_interrupt( (__int_handler) &spk_pdca_int_handler, AVR32_PDCA_IRQ_1, AVR32_INTC_INT1);
 	// Enable all interrupt/exception.
 	Enable_global_interrupt();
 }
@@ -218,10 +191,4 @@ void AK5394A_task_init(const Bool uac1) {
 		pdca_init_channel(PDCA_CHANNEL_SSC_RX, &PDCA_OPTIONS); // init PDCA channel with options.
 		pdca_enable_interrupt_reload_counter_zero(PDCA_CHANNEL_SSC_RX);
 	}
-	pdca_init_channel(PDCA_CHANNEL_SSC_TX, &SPK_PDCA_OPTIONS); // init PDCA channel with options.
-	pdca_enable_interrupt_reload_counter_zero(PDCA_CHANNEL_SSC_TX);
-
-	//////////////////////////////////////////////
-	// Enable now the transfer.
-	pdca_enable(PDCA_CHANNEL_SSC_TX);
 }

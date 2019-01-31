@@ -75,7 +75,7 @@ static void x_image_task_init(void) {
 
   mutexEP_IN = xSemaphoreCreateMutex(); // for co-ordinating multiple tasks using EP IN
 
-  #if LCD_DISPLAY						// Multi-line LCD display
+  #if 0
   vStartTaskLCD();
   vStartTaskPowerDisplay();
   vStartTaskPushButtonMenu();
