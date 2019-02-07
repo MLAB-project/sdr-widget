@@ -38,11 +38,15 @@ static void feature_factory_reset_handler(void) {
 	// set the major and minor version numbers to 0 in the nvram
 	// this value cannot happen naturally, so the image initialized
 	// version will be copied to nvram on the next reset
-	flashc_memset8((void *)&features_nvram, 0, 2, TRUE);
+
+	// Bolidozor: no flashing
+	//flashc_memset8((void *)&features_nvram, 0, 2, TRUE);
 }
 
 //
 void features_init() {
+// for Bolidozor: features are not read from nvram, default values can't be changed
+#if 0
   // Enforce "Factory default settings" when a mismatch is detected between the
   // checksum in the memory copy and the matching number in the NVRAM storage.
   // This can be the result of either a fresh firmware upload, or cmd 0x41 with data 0xff
@@ -50,8 +54,9 @@ void features_init() {
 	  widget_startup_log_line("reset feature nvram");
 	  flashc_memcpy((void *)&features_nvram, &features, sizeof(features), TRUE);
   } else {
-	  memcpy(&features, &features_nvram, sizeof(features));
   }
+#endif
+  memcpy(&features, &features_default, sizeof(features));
   // Register a factory reset handler
   widget_factory_reset_handler_register(feature_factory_reset_handler);
 }
@@ -81,25 +86,33 @@ void features_display_all() {
 }
 
 uint8_t feature_set(uint8_t index, uint8_t value) {
+	/*
 	return index > feature_minor_index && index < feature_end_index && value < feature_end_values ?
 		features[index] = value :
 		0xFF;
+	*/
+	return feature_get_default(index);
 }
 
 uint8_t feature_get(uint8_t index) {
-	return index < feature_end_index ? features[index] : 0xFF;
+	//return index < feature_end_index ? features[index] : 0xFF;
+	return feature_get_default(index);
 }
 
 uint8_t feature_set_nvram(uint8_t index, uint8_t value)  {
+	/*
 	if ( index > feature_minor_index && index < feature_end_index && value < feature_end_values ) {
 		flashc_memset8((void *)&features_nvram[index], value, sizeof(uint8_t), TRUE);
 		return features_nvram[index];
 	} else
-		return 0xFF;
+	*/
+	return feature_get_default(index);
 }
 
 uint8_t feature_get_nvram(uint8_t index)  {
-	return index < feature_end_index ? features_nvram[index] : 0xFF;
+	//return index < feature_end_index ? features_nvram[index] : 0xFF;
+	return feature_get_default(index);
+
 }
 
 uint8_t feature_get_default(uint8_t index) {

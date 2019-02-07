@@ -25,8 +25,8 @@
 //-----------------------------------------------------------------------------
 //
 
-#define VERSION_MAJOR 16
-#define VERSION_MINOR 100
+#define VERSION_MAJOR 98
+#define VERSION_MINOR 1
 
 // EEPROM settings Serial Number. Increment this number when firmware mods necessitate
 // fresh "Factory Default Settings" to be forced into the EEPROM (NVRAM)at first boot after
